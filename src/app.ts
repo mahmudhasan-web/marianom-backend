@@ -1,33 +1,29 @@
+import cors from "cors";
+import express, { Application, Request, Response } from "express";
+import router from "./app/routes";
+import { PrismaClient } from "@prisma/client";
+import GlobalErrorHandler from "./app/middleware/globalError";
+import cookieParser from "cookie-parser";
+import config from "./config";
 
-import cors from 'cors'
-import express, { Application, Request, Response } from 'express'
-import router from './app/routes'
-import { PORT } from './secrets'
-import { PrismaClient } from '@prisma/client'
-import GlobalErrorHandler from './app/middleware/globalError'
-import cookieParser from 'cookie-parser'
+const app: Application = express();
 
-const app: Application = express()
-
-//parsers
-app.use(express.json())
-app.use(cookieParser())
+//middlewares
+app.use(express.json());
+app.use(cookieParser());
 
 app.use(
   cors({
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:3000',
-    ],
+    origin: ["http://localhost:5173", "http://localhost:3000"],
     credentials: true,
-  }),
-)
+  })
+);
 
-app.use('/api/v1', router)
+app.use("/api/v1", router);
 
-app.use(GlobalErrorHandler)
+app.use(GlobalErrorHandler);
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
 async function checkDatabaseConnection() {
   try {
@@ -40,23 +36,15 @@ async function checkDatabaseConnection() {
   }
 }
 
-checkDatabaseConnection()
-
-
+checkDatabaseConnection();
 
 // application routes
+app.get("/", async (req: Request, res: Response) => {
+  res.send({ message: "Server is running properly" });
+});
 
-app.get('/', async (req: Request, res: Response) => {
-  res.send({message : 'Server is running properly'})
-})
+app.listen(config.port, () => {
+  console.log(`server is running ${config.port}`);
+});
 
-
-app.listen(PORT, () => {
-  console.log('server is running')
-})
-
-
-
-
-
-export default app
+export default app;

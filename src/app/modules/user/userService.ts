@@ -1,75 +1,62 @@
 import { PrismaClient, User } from "@prisma/client";
 import { compareSync, hashSync } from "bcryptjs";
-import { Request, Response } from "express";
 import ApiError from "../../utilis/ApiErr";
-import { StatusCodes } from 'http-status-codes'
-import jwt from 'jsonwebtoken'
-import { SECRETTOKEN } from "../../../secrets";
+import { StatusCodes } from "http-status-codes";
+import jwt from "jsonwebtoken";
+import config from "../../../config";
 
-
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
 const createUserIntoDB = async (payload: User) => {
-    const { email, password, name, userName, dateOfBirth, gender, interestIn, number } = payload
-    const user = await prisma.user.findUnique({
-        where: {
-            email: email,
-            userName: userName
-        }
-    })
+  const user = await prisma.user.findUnique({
+    where: {
+      email: payload.email,
+      userName: payload.userName,
+    },
+  });
 
-    if (user) {
-        throw new ApiError(StatusCodes.CONFLICT, "User already exit")
-    }
+  if (user) {
+    throw new ApiError(StatusCodes.CONFLICT, "User already exit");
+  }
 
-    const result = await prisma.user.create({
-        data: {
-            email: email,
-            password: hashSync(password, 10),
-            name: name,
-            userName: userName,
-            dateOfBirth: dateOfBirth,
-            gender: gender,
-            interestIn: interestIn,
-            number: number
+  const result = await prisma.user.create({
+    data: {
+      ...payload,
+      password: hashSync(payload.password, 10),
+    },
+  });
 
-        }
-    })
+  return result;
+};
 
-    return result
+const logInUserFromDB = async (payload: {
+  userName: string;
+  password: string;
+}) => {
+  const userInfo = await prisma.user.findUnique({
+    where: {
+      userName: payload.userName,
+    },
+  });
 
-}
+  if (!userInfo) {
+    throw new ApiError(404, "User not found");
+  }
 
-const logInUserFromDB = async (payload: { userName: string, password: string }) => {
+  const isCorrectPassword = compareSync(payload.password, userInfo.password);
+  if (!isCorrectPassword) {
+    throw new ApiError(StatusCodes.FORBIDDEN, "Password doesn't match");
+  }
 
-    const user = await prisma.user.findUnique({
-        where: {
-            userName: payload.userName
-        }
-    })
+  const { password, ...user } = userInfo;
+  const token = jwt.sign(user, config.jwt.secret_key as string, {
+    expiresIn: 36000,
+  });
 
-    if (user) {
-        const isCorrectPassword = compareSync(payload.password, user.password)
-        if (isCorrectPassword) {
-            const { password, ...userWithoutPassword } = user;
+  return {
+    accessToken: token,
+    user,
+  };
+};
 
-            const token = jwt.sign(userWithoutPassword, SECRETTOKEN as string, { expiresIn: 36000 })
-            const userName = user.userName
-            const email = user.email
-            const imageUrl = user.imageUrl
-
-
-
-            return { accessToken: token, data: { userName, email, imageUrl } }
-
-        }
-
-        throw new ApiError(StatusCodes.FORBIDDEN, "Password doesn't match")
-    }
-    else {
-        throw new ApiError(StatusCodes.CONFLICT, "User doesn't exit")
-    }
-}
-
-
-export const userService = { createUserIntoDB, logInUserFromDB }
+export const userService = { createUserIntoDB, logInUserFromDB };
