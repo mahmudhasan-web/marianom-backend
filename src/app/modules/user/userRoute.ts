@@ -10,10 +10,6 @@ route.post('/createUser',
     userController.createUser
 )
 
-route.post('/loginUser',
-    validateRequest(userValidation.loginUserValidation),
-    userController.logInUser
-)
 
 
 export const userRoutes = route

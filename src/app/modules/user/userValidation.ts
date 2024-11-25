@@ -52,10 +52,6 @@ const CreateUserValidation = z.object({
 });
 
 
-const loginUserValidation = z.object({
-    userName: z.string(), 
-    password: z.string()
-        
-})
 
-export const userValidation = { CreateUserValidation, loginUserValidation };
+
+export const userValidation = { CreateUserValidation };
